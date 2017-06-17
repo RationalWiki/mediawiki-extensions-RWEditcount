@@ -1,5 +1,13 @@
 <?php
 
+// b/c for testing only
+if ( !function_exists( 'wfMsg' ) ) {
+	function wfMsg() {
+		$args = func_get_args();
+		return call_user_func_array( 'wfMessage', $args )->text();
+	}
+}
+
 class SpecialEditcount extends SpecialPage {
   
   var $target, $cutoff, $month, $year;
@@ -9,7 +17,6 @@ class SpecialEditcount extends SpecialPage {
     #SpecialPage::setGroup('Editcount','users');
     global $wgSpecialPageGroups;
     $wgSpecialPageGroups['Editcount']='users';
-    wfLoadExtensionMessages('Editcount');
   }
   
   function execute( $par ) {
@@ -86,13 +93,13 @@ class SpecialEditcount extends SpecialPage {
         Xml::closeElement( 'form' )
 		);
 		
-		$like = "{$this->year}{$this->month}";
 		$dbr = wfGetDB(DB_SLAVE);
+		$like = $this->sanitizeLike( $dbr, "{$this->year}{$this->month}" );
 		if ($this->target) 
 		{
 		  $conds = array(
 		    'rev_user_text' => $this->target,
-		    'rev_timestamp LIKE "' . /*$dbr->escapeLike(*/$like/*)*/ . '%"',
+		    'rev_timestamp ' . $like,
 		  );
 		  $res = $dbr->select(array('page', 'revision'),
 		                      array('page_namespace','count(page_namespace)'),
@@ -113,8 +120,8 @@ class SpecialEditcount extends SpecialPage {
       $totallabel = wfMsg('editcount-total');
       $wgOut->addHTML("<table>
         <tr>
-          <td style='padding-right:4em;'>{$this->target}</td>
-          <td style='padding-right:1em;'>{$this->month}/{$this->year}</td>
+          <td style='padding-right:4em;'>" . htmlspecialchars( $this->target ) . "</td>
+          <td style='padding-right:1em;'>" . htmlspecialchars( "{$this->month}/{$this->year}" ) . "</td>
           <td>$totallabel&nbsp;{$total}</td>
         </tr>
         "
@@ -122,7 +129,7 @@ class SpecialEditcount extends SpecialPage {
       global $wgCanonicalNamespaceNames;
       for($i=0; $i<count($data);++$i)
       {
-        $ns = ($data[$i]['ns'] == NS_MAIN) ? wfMsg(blanknamespace) : strtr( $wgCanonicalNamespaceNames[$data[$i]['ns']], '_', ' ' );;
+        $ns = htmlspecialchars( ($data[$i]['ns'] == NS_MAIN) ? wfMsg('blanknamespace') : strtr( $wgCanonicalNamespaceNames[$data[$i]['ns']], '_', ' ' ) );
 		    $num = $data[$i]['count'];
 		    $perc  = round($num/$total*100,2);
 		    $wgOut->addHTML("
@@ -138,7 +145,7 @@ class SpecialEditcount extends SpecialPage {
 		} elseif ($this->cutoff) {
 		  $res=$dbr->select('revision',
 		                    array('rev_user_text','count(rev_timestamp)'),
-		                    array('rev_timestamp LIKE "' . /*$dbr->escapeLike(*/$like/*)*/ . '%"',),
+		                    array('rev_timestamp ' . $like,),
 		                    'SpecialEditcount::execute',
 		                    array('GROUP BY' => 'rev_user_text', 'ORDER BY' => 'count(rev_timestamp) desc', 'LIMIT' => "{$this->cutoff}")
 		                    );
@@ -152,19 +159,37 @@ class SpecialEditcount extends SpecialPage {
         $userlink = Xml::openElement('a',array('href' => $titleObject->getLocalURL(array('name' => $name,
                                                                                   'year' => $this->year,
                                                                                   'month' => $this->month)) )) . 
-                      $name . 
+                      htmlspecialchars( $name ) .
                     Xml::closeElement('a');
         $wgOut->addHTML("
         <tr>
           <td style='padding-right:4em;'>{$userlink}</td>
           <td style='padding-right:1em;'>{$mmonth}/{$myear}</td>
-          <td>$totallabel&nbsp;{$total}</td>
+          <td>$totallabel&nbsp;" . htmlspecialchars( $total ) . "</td>
         </tr>
         "
         );
       }
       $wgOut->addHTML("</table>");
 		}
+  }
+
+  protected function sanitizeLike( $db, $input ) {
+	  $parts = [];
+	  $pos = 0;
+	  while ( $pos < strlen( $input ) ) {
+		  $literalLength = strcspn( $input, '_', $pos );
+		  if ( $literalLength > 0 ) {
+			  $parts[] = substr( $input, $pos, $literalLength );
+		  }
+		  $pos += $literalLength;
+		  while ( isset( $input[$pos] ) && $input[$pos] === '_' ) {
+			  $parts[] = $db->anyChar();
+			  $pos++;
+		  }
+	  }
+	  $parts[] = $db->anyString();
+	  return call_user_func_array( [ $db, 'buildLike' ], $parts );
   }
 }
 
