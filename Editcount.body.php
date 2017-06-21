@@ -175,7 +175,7 @@ class SpecialEditcount extends SpecialPage {
   }
 
   protected function sanitizeLike( $db, $input ) {
-	  $parts = [];
+	  $parts = array();
 	  $pos = 0;
 	  while ( $pos < strlen( $input ) ) {
 		  $literalLength = strcspn( $input, '_', $pos );
@@ -189,7 +189,7 @@ class SpecialEditcount extends SpecialPage {
 		  }
 	  }
 	  $parts[] = $db->anyString();
-	  return call_user_func_array( [ $db, 'buildLike' ], $parts );
+	  return call_user_func_array( array( $db, 'buildLike' ), $parts );
   }
 }
 
