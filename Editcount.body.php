@@ -1,13 +1,5 @@
 <?php
 
-// b/c for testing only
-if ( !function_exists( 'wfMsg' ) ) {
-	function wfMsg() {
-		$args = func_get_args();
-		return call_user_func_array( 'wfMessage', $args )->text();
-	}
-}
-
 class SpecialEditcount extends SpecialPage {
   
   var $target, $cutoff, $month, $year;
@@ -36,7 +28,7 @@ class SpecialEditcount extends SpecialPage {
     
 		$this->setHeaders();
 
-    $mAll = wfMsg('editcount-all');
+    $mAll = wfMessage('editcount-all')->escaped();
     $currentYear = gmdate('Y');
     
     $yearoptions = '';
@@ -50,13 +42,13 @@ class SpecialEditcount extends SpecialPage {
 		$wgOut->addHTML(
        Xml::openElement('form', array( 'id' => 'editcount', 'method' => 'post', 'action' => $titleObject->getLocalURL("action=submit"), ) ) .
        Xml::openElement( 'fieldset' ) .
-       Xml::element( 'legend', null, wfMsg( 'editcountlegend' ) ) .
-       Xml::label( wfMsg('editcount-username'), 'name' ) . "&nbsp;" .
+       Xml::element( 'legend', null, wfMessage( 'editcountlegend' )->text() ) .
+       Xml::label( wfMessage('editcount-username')->text(), 'name' ) . "&nbsp;" .
        Xml::input( 'name', 45, $this->target,
                     array( 'tabindex' => '1',
                            'id' => 'name', ) ) .
        "<p>" .
-       Xml::label( wfMsg('editcount-month'), 'month' ) . "&nbsp;" .
+       Xml::label( wfMessage('editcount-month')->text(), 'month' ) . "&nbsp;" .
 		       "<select id=\"month\" name=\"month\" tabindex=\"2\">
              <option value=\"__\">{$mAll}</option>
              <option value=\"01\" " . (($this->month == '01') ? 'selected' : '') .">01</option>
@@ -72,19 +64,19 @@ class SpecialEditcount extends SpecialPage {
              <option value=\"11\" " . (($this->month == '11') ? 'selected' : '') .">11</option>
              <option value=\"12\" " . (($this->month == '12') ? 'selected' : '') .">12</option>
 		       </select> " .
-		       Xml::label( wfMsg('editcount-year'), 'year' ) . "&nbsp;
+		       Xml::label( wfMessage('editcount-year')->text(), 'year' ) . "&nbsp;
 		       <select id=\"year\" name=\"year\" tabindex=\"3\">
              <option value=\"____\">{$mAll}</option>
              {$yearoptions}
            </select>
         </p><p> " .
-        Xml::label( wfMsg('editcount-returntop'), 'month' ) . "&nbsp;" .
+        Xml::label( wfMessage('editcount-returntop')->text(), 'month' ) . "&nbsp;" .
         Xml::input( 'cutoff', 1, $this->cutoff,
                      array( 'tabindex' => '4',
                              'id' => 'cutoff',
                              'maxlength' => '3' ) ) . "
         </p><p> " .
-        Xml::submitButton( wfMsg( 'editcount-go' ),
+        Xml::submitButton( wfMessage( 'editcount-go' )->text(),
                            array('name' => 'editcount_go',
                                  'tabindex' => '5',
                                  'accesskey' => 's') ) . "
@@ -117,7 +109,7 @@ class SpecialEditcount extends SpecialPage {
       $res->free();
       $this->month = $this->month == '__' ? '*' : $this->month;
       $this->year = $this->year == '____' ? '*' : $this->year;
-      $totallabel = wfMsg('editcount-total');
+      $totallabel = wfMessage('editcount-total')->text();
       $wgOut->addHTML("<table>
         <tr>
           <td style='padding-right:4em;'>" . htmlspecialchars( $this->target ) . "</td>
@@ -129,7 +121,7 @@ class SpecialEditcount extends SpecialPage {
       global $wgCanonicalNamespaceNames;
       for($i=0; $i<count($data);++$i)
       {
-        $ns = htmlspecialchars( ($data[$i]['ns'] == NS_MAIN) ? wfMsg('blanknamespace') : strtr( $wgCanonicalNamespaceNames[$data[$i]['ns']], '_', ' ' ) );
+        $ns = htmlspecialchars( ($data[$i]['ns'] == NS_MAIN) ? wfMessage('blanknamespace')->text() : strtr( $wgCanonicalNamespaceNames[$data[$i]['ns']], '_', ' ' ) );
 		    $num = $data[$i]['count'];
 		    $perc  = round($num/$total*100,2);
 		    $wgOut->addHTML("
