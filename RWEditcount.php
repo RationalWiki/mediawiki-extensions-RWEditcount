@@ -18,9 +18,9 @@ $wgAPIListModules['activeusers'] = 'ApiActiveusers';
 
 # include path
 $wgEditcountIP = dirname( __FILE__ );
-$wgExtensionMessagesFiles['Editcount'] = "$wgEditcountIP/Editcount.i18n.php";
+$wgExtensionMessagesFiles['Editcount'] = "$wgEditcountIP/RWEditcount.i18n.php";
 
 # Load classes
-$wgAutoloadClasses['SpecialEditcount'] =  "$wgEditcountIP/Editcount.body.php";
-$wgAutoloadClasses['ApiActiveusers'] =  "$wgEditcountIP/Editcount.body.php";
+$wgAutoloadClasses['SpecialEditcount'] =  "$wgEditcountIP/RWEditcount.body.php";
+$wgAutoloadClasses['ApiActiveusers'] =  "$wgEditcountIP/RWEditcount.body.php";
 
