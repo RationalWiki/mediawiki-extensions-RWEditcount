@@ -102,7 +102,7 @@ class SpecialEditcount extends SpecialPage {
 			);
 			$res = $dbr->select(
 				array( 'page', 'revision' ) + $actorQueryInfo['tables'],
-				array( 'page_namespace', 'count(page_namespace)' ),
+				array( 'page_namespace', 'edit_count' => 'count(page_namespace)' ),
 				$conds,
 				'SpecialEditcount::execute',
 				array( 'GROUP BY' => 'page_namespace' ),
@@ -110,10 +110,10 @@ class SpecialEditcount extends SpecialPage {
 			$total = 0;
 			$data = array();
 			foreach ( $res as $row ) {
-				$total += $row['count(page_namespace)'];
+				$total += $row->edit_count;
 				$data[] = array(
-					'ns' => $row['page_namespace'],
-					'count' => $row['count(page_namespace)'],
+					'ns' => $row->page_namespace,
+					'count' => $row->edit_count,
 				);
 			}
 			$res->free();
@@ -147,7 +147,7 @@ class SpecialEditcount extends SpecialPage {
 			$res = $dbr->select(
 				[ 'revision' ] + $actorQueryInfo['tables'],
 				$actorQueryInfo['fields'] + array(
-					'count(rev_timestamp)'
+					'num_edits' => 'count(rev_timestamp)'
 				),
 				array( 'rev_timestamp ' . $like ),
 				__METHOD__,
@@ -162,8 +162,8 @@ class SpecialEditcount extends SpecialPage {
 			$mmonth = $this->month == '__' ? '*' : $this->month;
 			$myear = $this->year == '____' ? '*' : $this->year;
 			foreach ( $res as $row ) {
-				$name = $row['rev_user_text'];
-				$total = $row['count(rev_timestamp)'];
+				$name = $row->rev_user_text;
+				$total = $row->num_edits;
 				$userlink = Xml::openElement( 'a', array(
 						'href' => $titleObject->getLocalURL( array(
 							'name' => $name,
@@ -245,7 +245,7 @@ class ApiActiveusers extends ApiQueryBase {
 		$actorQueryInfo = $actorMigration->getJoin( 'rev_user' );
 		$this->addTables( $actorQueryInfo['tables'] );
 		$this->addJoinConds( $actorQueryInfo['joins'] );
-		$this->addFields( $actorQueryInfo['fields'] + array( 'count(rev_timestamp)' ) );
+		$this->addFields( $actorQueryInfo['fields'] + array( 'num_edits' => 'count(rev_timestamp)' ) );
 		$this->addOption( 'GROUP BY', $actorQueryInfo['fields']['rev_user_text'] );
 		$this->addOption( 'ORDER BY', "count(rev_timestamp) desc" );
 		$this->addOption( 'LIMIT', "{$limit}" );
@@ -258,8 +258,8 @@ class ApiActiveusers extends ApiQueryBase {
 		foreach ( $res as $row ) {
 			$data[] =
 				array(
-					'name' => $row['rev_user_text'],
-					'editcount' => $row['count(rev_timestamp)'],
+					'name' => $row->rev_user_text,
+					'editcount' => $row->num_edits,
 				);
 		}
 		$db->freeResult( $res );
