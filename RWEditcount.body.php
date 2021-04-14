@@ -1,5 +1,7 @@
 <?php
 
+use MediaWiki\MediaWikiServices;
+
 class SpecialEditcount extends SpecialPage {
 
 	var $target, $cutoff, $month, $year;
@@ -90,15 +92,21 @@ class SpecialEditcount extends SpecialPage {
 		$dbr = wfGetDB( DB_REPLICA );
 		$like = $this->sanitizeLike( $dbr, "{$this->year}{$this->month}" );
 		$totallabel = wfMessage( 'editcount-total' )->text();
+		$actorMigration = MediaWikiServices::getInstance()->getActorMigration();
 		if ( $this->target ) {
+			$actorQueryInfo = $actorMigration->getWhere( $dbr, 'rev_user',
+				User::newFromName( $this->target ) );
 			$conds = array(
-				'rev_user_text' => $this->target,
+				$actorQueryInfo['conds'],
 				'rev_timestamp ' . $like,
 			);
-			$res = $dbr->select( array( 'page', 'revision' ),
-				array( 'page_namespace', 'count(page_namespace)' ), $conds,
-				'SpecialEditcount::execute', array( 'GROUP BY' => 'page_namespace' ),
-				array( 'revision' => array( 'JOIN', 'page_id=rev_page' ) ) );
+			$res = $dbr->select(
+				array( 'page', 'revision' ) + $actorQueryInfo['tables'],
+				array( 'page_namespace', 'count(page_namespace)' ),
+				$conds,
+				'SpecialEditcount::execute',
+				array( 'GROUP BY' => 'page_namespace' ),
+				array( 'revision' => array( 'JOIN', 'page_id=rev_page' ) ) + $actorQueryInfo['joins'] );
 			$total = 0;
 			$data = array();
 			foreach ( $res as $row ) {
@@ -135,16 +143,21 @@ class SpecialEditcount extends SpecialPage {
 			}
 			$wgOut->addHTML( '</table>' );
 		} elseif ( $this->cutoff ) {
+			$actorQueryInfo = $actorMigration->getJoin( 'rev_user' );
 			$res = $dbr->select(
-				'revision',
-				array( 'rev_user_text', 'count(rev_timestamp)' ),
-				array( 'rev_timestamp ' . $like, ),
+				[ 'revision' ] + $actorQueryInfo['tables'],
+				$actorQueryInfo['fields'] + array(
+					'count(rev_timestamp)'
+				),
+				array( 'rev_timestamp ' . $like ),
 				__METHOD__,
 				array(
-					'GROUP BY' => 'rev_user_text',
+					'GROUP BY' => $actorQueryInfo['fields']['rev_user_text'],
 					'ORDER BY' => 'count(rev_timestamp) desc',
 					'LIMIT' => $this->cutoff,
-				) );
+				),
+				$actorQueryInfo['joins']
+				);
 			$wgOut->addHTML( "<table>" );
 			$mmonth = $this->month == '__' ? '*' : $this->month;
 			$myear = $this->year == '____' ? '*' : $this->year;
@@ -228,8 +241,12 @@ class ApiActiveusers extends ApiQueryBase {
 					$this->getDB()->anyString() ) );
 		}
 
-		$this->addFields( array( 'rev_user_text', 'count(rev_timestamp)' ) );
-		$this->addOption( 'GROUP BY', 'rev_user_text' );
+		$actorMigration = MediaWikiServices::getInstance()->getActorMigration();
+		$actorQueryInfo = $actorMigration->getJoin( 'rev_user' );
+		$this->addTables( $actorQueryInfo['tables'] );
+		$this->addJoinConds( $actorQueryInfo['joins'] );
+		$this->addFields( $actorQueryInfo['fields'] + array( 'count(rev_timestamp)' ) );
+		$this->addOption( 'GROUP BY', $actorQueryInfo['fields']['rev_user_text'] );
 		$this->addOption( 'ORDER BY', "count(rev_timestamp) desc" );
 		$this->addOption( 'LIMIT', "{$limit}" );
 
